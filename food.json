@@ -128,25 +128,5 @@
     "todate": "",
     "photo": [],
     "photoHash": ""
-  },
-  {
-    "id": 41,
-    "name": "",
-    "amount": 0,
-    "price": 0,
-    "shop": "",
-    "todate": "",
-    "photo": [],
-    "photoHash": ""
-  },
-  {
-    "id": 43,
-    "name": "",
-    "amount": 0,
-    "price": 0,
-    "shop": "",
-    "todate": "",
-    "photo": [],
-    "photoHash": ""
   }
 ]
