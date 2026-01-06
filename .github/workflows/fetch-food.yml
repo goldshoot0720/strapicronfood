@@ -1,34 +1,36 @@
-name: Fetch Food from Strapi
+name: Fetch Food
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "5 */6 * * *"  # 每 6 小時第 5 分鐘
+    - cron: "0 * * * *"   # 每小時整點抓一次
+  workflow_dispatch:       # 可手動觸發
 
 jobs:
   fetch-food:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: 18
 
-      - name: Fetch food data
+      - name: Install dependencies
+        run: npm install
+
+      - name: Fetch food from Strapi
         env:
-          STRAPI_URL: ${{ secrets.STRAPI_URL }}
-          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
-        run: |
-          node fetch-food.js
+          STRAPI_API_URL: ${{ secrets.STRAPI_API_URL }}  # 例如 https://dazzling-strength-d03d813531.strapi.app
+          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}      # Strapi 後台 API Token (Read-only)
+        run: node scripts/fetch-food.js
 
       - name: Commit food.json
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git add food.json
-          git commit -m "chore: update food.json" || echo "No changes"
+          git commit -m "Update food.json [skip ci]" || echo "No changes to commit"
           git push
