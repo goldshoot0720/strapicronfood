@@ -2,11 +2,11 @@ name: Fetch Strapi Food
 
 on:
   schedule:
-    # 這裡保留你的設定，如果是想每5分鐘跑一次，請改成 "*/5 * * * *"
+    # 提醒：*/55 代表每小時的第 55 分執行。若要每 5 分鐘執行一次，請改為 "*/5 * * * *"
     - cron: "*/55 * * * *"
   workflow_dispatch:
 
-# 賦予寫入權限，這對 git push 很重要
+# 重要：給予寫入權限以便 git push
 permissions:
   contents: write
 
@@ -30,7 +30,7 @@ jobs:
         env:
           STRAPI_URL: ${{ secrets.STRAPI_URL }}
           STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
-        # 關鍵修正：加入 --input-type=module 以支援 import 和 top-level await
+        # 使用 --input-type=module 以支援 import
         run: |
           node --input-type=module -e '
           import fetch from "node-fetch";
@@ -56,7 +56,6 @@ jobs:
                 price: attrs.price || 0,
                 shop: attrs.shop || "",
                 todate: attrs.todate || "",
-                // 這裡加入了 safety check 防止 map 出錯
                 photo: Array.isArray(attrs.photo?.data) 
                   ? attrs.photo.data.map(p => p.attributes?.url || "") 
                   : [],
@@ -77,12 +76,12 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           
-          # 檢查是否有檔案變更，有變更才 commit，避免 error
+          # 檢查是否有檔案變更
           if [[ -n $(git status -s food.json) ]]; then
             git add food.json
             git commit -m "Update food.json [skip ci]"
             git push
-            console.log("Changes pushed to repository.");
+            echo "Changes pushed to repository."
           else
             echo "No changes in food.json, skipping commit."
           fi
