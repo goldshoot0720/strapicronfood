@@ -1,33 +1,35 @@
-name: Fetch Food
+name: Fetch Strapi Food
 
+# 每小時執行一次
 on:
   schedule:
-    - cron: "0 * * * *"   # 每小時整點抓一次
-  workflow_dispatch:       # 可手動觸發
+    - cron: '0 * * * *'  # 每小時整點
+  workflow_dispatch: # 也可以手動觸發
 
 jobs:
   fetch-food:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. 取得 repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # 2. 設定 Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: '18'
 
-      - name: Install dependencies
-        run: npm install
-
+      # 3. 執行 fetch-food.js
       - name: Fetch food from Strapi
         env:
-          STRAPI_API_URL: ${{ secrets.STRAPI_API_URL }}  # 例如 https://dazzling-strength-d03d813531.strapi.app
-          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}      # Strapi 後台 API Token (Read-only)
+          STRAPI_API_URL: ${{ secrets.STRAPI_API_URL }}
+          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
         run: node scripts/fetch-food.js
 
-      - name: Commit food.json
+      # 4. 將生成的 food.json commit 回 repo（可選）
+      - name: Commit and push food.json
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
