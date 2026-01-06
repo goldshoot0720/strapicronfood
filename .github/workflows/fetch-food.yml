@@ -1,50 +1,31 @@
-name: Fetch Strapi Food
+- name: Fetch food from Strapi
+  env:
+    STRAPI_URL: ${{ secrets.STRAPI_URL }}
+    STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
+  run: |
+    node -e '
+    import fetch from "node-fetch";
+    import fs from "fs";
 
-# 每55分鐘執行一次
-on:
-  schedule:
-    - cron: "*/55 * * * *"
-  workflow_dispatch:  # 手動也可以觸發
+    const url = `${process.env.STRAPI_URL}/api/foods?populate=photo`;
+    const headers = { Authorization: `Bearer ${process.env.STRAPI_TOKEN}` };
 
-jobs:
-  fetch-food:
-    runs-on: ubuntu-latest
+    const res = await fetch(url, { headers });
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    const data = await res.json();
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
+    const foods = data.data.map(item => ({
+      id: item.id,
+      name: item.attributes.name,
+      amount: item.attributes.amount,
+      price: item.attributes.price,
+      shop: item.attributes.shop,
+      todate: item.attributes.todate,
+      photo: item.attributes.photo.data?.map(p => p.attributes.url) || [],
+      photoHash: item.attributes.photoHash
+    }));
 
-      - name: Install dependencies
-        run: npm install node-fetch@3
-
-      - name: Fetch food from Strapi
-        env:
-          STRAPI_URL: ${{ secrets.STRAPI_URL }}
-          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
-        run: |
-          node -e "
-          import fetch from 'node-fetch';
-          import fs from 'fs';
-
-          const url = `${process.env.STRAPI_URL}/api/foods?populate=photo`;
-          const headers = { Authorization: `Bearer ${process.env.STRAPI_TOKEN}` };
-
-          const res = await fetch(url, { headers });
-          if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-
-          const data = await res.json();
-
-          // 只取需要的欄位
-          const foods = data.data.map(item => ({
-            id: item.id,
-            name: item.attributes.name,
-            amount: item.attributes.amount,
-            price: item.attributes.price,
-            shop: item.attributes.shop,
-            todate: item.attributes.todate,
-            photo: item.attribute
+    fs.writeFileSync("food.json", JSON.stringify(foods, null, 2));
+    console.log("food.json generated successfully");
+    '
