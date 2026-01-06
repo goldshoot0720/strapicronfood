@@ -1,81 +1,50 @@
 name: Fetch Strapi Food
 
+# 每55分鐘執行一次
 on:
   schedule:
-    - cron: "0 * * * *"  # 每小時的第0分鐘
-  workflow_dispatch:     # 可手動觸發
+    - cron: "*/55 * * * *"
+  workflow_dispatch:  # 手動也可以觸發
 
 jobs:
   fetch-food:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout Repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. 設定 Node.js
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: '20'
 
-      # 3. 創建並執行 fetch-food.js
+      - name: Install dependencies
+        run: npm install node-fetch@3
+
       - name: Fetch food from Strapi
         env:
-          STRAPI_API_URL: ${{ secrets.STRAPI_API_URL }}
+          STRAPI_URL: ${{ secrets.STRAPI_URL }}
           STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
         run: |
-          echo "Fetching food from Strapi..."
+          node -e "
+          import fetch from 'node-fetch';
+          import fs from 'fs';
 
-          cat << 'EOF' > fetch-food.js
-          const fs = require('fs');
-          const fetch = require('node-fetch');
+          const url = `${process.env.STRAPI_URL}/api/foods?populate=photo`;
+          const headers = { Authorization: `Bearer ${process.env.STRAPI_TOKEN}` };
 
-          const STRAPI_API_URL = process.env.STRAPI_API_URL;
-          const STRAPI_TOKEN = process.env.STRAPI_TOKEN;
+          const res = await fetch(url, { headers });
+          if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
 
-          if (!STRAPI_API_URL || !STRAPI_TOKEN) {
-            console.error('STRAPI_API_URL or STRAPI_TOKEN not set!');
-            process.exit(1);
-          }
+          const data = await res.json();
 
-          async function fetchFood() {
-            try {
-              const res = await fetch(`${STRAPI_API_URL}/api/foods?populate=*`, {
-                headers: {
-                  Authorization: `Bearer ${STRAPI_TOKEN}`,
-                  'Content-Type': 'application/json'
-                }
-              });
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              const data = await res.json();
-              const foods = data.data.map(f => ({
-                name: f.attributes.name,
-                amount: f.attributes.amount,
-                price: f.attributes.price,
-                shop: f.attributes.shop,
-                todate: f.attributes.todate,
-                photo: f.attributes.photo?.map(p => p.url) || [],
-                photoHash: f.attributes.photoHash
-              }));
-              fs.writeFileSync('food.json', JSON.stringify(foods, null, 2));
-              console.log(`Fetched ${foods.length} food items.`);
-            } catch (err) {
-              console.error(err);
-              process.exit(1);
-            }
-          }
-
-          fetchFood();
-          EOF
-
-          # 執行 Node.js
-          node fetch-food.js
-
-      # 4. 將 food.json 加入 artifact（可選）
-      - name: Upload food.json as artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: food-json
-          path: food.json
+          // 只取需要的欄位
+          const foods = data.data.map(item => ({
+            id: item.id,
+            name: item.attributes.name,
+            amount: item.attributes.amount,
+            price: item.attributes.price,
+            shop: item.attributes.shop,
+            todate: item.attributes.todate,
+            photo: item.attribute
