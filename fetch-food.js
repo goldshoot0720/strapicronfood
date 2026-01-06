@@ -1,54 +1,34 @@
 import fs from 'fs';
 import fetch from 'node-fetch';
 
-const STRAPI_API_URL = process.env.STRAPI_API_URL;
+const STRAPI_URL = process.env.STRAPI_URL;
 const STRAPI_TOKEN = process.env.STRAPI_TOKEN;
 
-if (!STRAPI_API_URL || !STRAPI_TOKEN) {
-  console.error("⚠️ STRAPI_API_URL or STRAPI_TOKEN is missing");
-  process.exit(1);
+if (!STRAPI_URL || !STRAPI_TOKEN) {
+  throw new Error("STRAPI_URL or STRAPI_TOKEN is not set");
 }
 
 async function fetchFood() {
-  try {
-    const res = await fetch(`${STRAPI_API_URL}/api/foods?populate=photo`, {
-      headers: {
-        Authorization: `Bearer ${STRAPI_TOKEN}`,
-      },
-    });
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+  const res = await fetch(`${STRAPI_URL}/foods`, {
+    headers: {
+      Authorization: `Bearer ${STRAPI_TOKEN}`
     }
+  });
 
-    const json = await res.json();
-    // 防呆: v5 或 v4 attributes
-    const foods = json.data.map(item => {
-      const data = item.attributes ?? item;
+  const data = await res.json();
 
-      return {
-        id: item.id,
-        name: data.name,
-        amount: data.amount,
-        price: data.price,
-        shop: data.shop,
-        todate: data.todate,
-        photoHash: data.photoHash,
-        photo: (data.photo || []).map(p => ({
-          url: p.url,
-          hash: p.hash,
-          formats: p.formats
-        })),
-      };
-    });
+  const simplified = data.map(item => ({
+    name: item.name,
+    amount: item.amount,
+    price: item.price,
+    shop: item.shop,
+    todate: item.todate,
+    photo: item.photo,
+    photoHash: item.photoHash
+  }));
 
-    fs.writeFileSync('food.json', JSON.stringify(foods, null, 2));
-    console.log(`✅ food.json saved, ${foods.length} items`);
-
-  } catch (err) {
-    console.error("❌ Failed to fetch food:", err);
-    process.exit(1);
-  }
+  fs.writeFileSync('food.json', JSON.stringify(simplified, null, 2));
+  console.log('food.json generated');
 }
 
-fetchFood();
+fetchFood().catch(console.error);
