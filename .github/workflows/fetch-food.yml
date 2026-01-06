@@ -1,9 +1,9 @@
-name: Fetch Strapi Food  # workflow 名稱
+name: Fetch Strapi Food
 
 on:
   schedule:
-    - cron: "*/55 * * * *"  # 每55分鐘執行
-  workflow_dispatch:        # 手動也能觸發
+    - cron: "*/55 * * * *"
+  workflow_dispatch:
 
 jobs:
   fetch-food:
