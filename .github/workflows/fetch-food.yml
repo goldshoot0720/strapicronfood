@@ -1,27 +1,81 @@
-name: Fetch Food from Strapi
+name: Fetch Strapi Food
 
-# 每小時觸發
 on:
   schedule:
-    - cron: "0 * * * *" # 每小時的 0 分鐘
-  workflow_dispatch: # 允許手動觸發
+    - cron: "0 * * * *"  # 每小時的第0分鐘
+  workflow_dispatch:     # 可手動觸發
 
 jobs:
   fetch-food:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 取出程式碼
+      # 1. Checkout Repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. 安裝 Node.js
+      # 2. 設定 Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      # 3. 安裝相依套件（假如有 package.json）
-      - name: Install dependencies
+      # 3. 創建並執行 fetch-food.js
+      - name: Fetch food from Strapi
+        env:
+          STRAPI_API_URL: ${{ secrets.STRAPI_API_URL }}
+          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
         run: |
-          if [ -f package.json ]; then
+          echo "Fetching food from Strapi..."
+
+          cat << 'EOF' > fetch-food.js
+          const fs = require('fs');
+          const fetch = require('node-fetch');
+
+          const STRAPI_API_URL = process.env.STRAPI_API_URL;
+          const STRAPI_TOKEN = process.env.STRAPI_TOKEN;
+
+          if (!STRAPI_API_URL || !STRAPI_TOKEN) {
+            console.error('STRAPI_API_URL or STRAPI_TOKEN not set!');
+            process.exit(1);
+          }
+
+          async function fetchFood() {
+            try {
+              const res = await fetch(`${STRAPI_API_URL}/api/foods?populate=*`, {
+                headers: {
+                  Authorization: `Bearer ${STRAPI_TOKEN}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              const data = await res.json();
+              const foods = data.data.map(f => ({
+                name: f.attributes.name,
+                amount: f.attributes.amount,
+                price: f.attributes.price,
+                shop: f.attributes.shop,
+                todate: f.attributes.todate,
+                photo: f.attributes.photo?.map(p => p.url) || [],
+                photoHash: f.attributes.photoHash
+              }));
+              fs.writeFileSync('food.json', JSON.stringify(foods, null, 2));
+              console.log(`Fetched ${foods.length} food items.`);
+            } catch (err) {
+              console.error(err);
+              process.exit(1);
+            }
+          }
+
+          fetchFood();
+          EOF
+
+          # 執行 Node.js
+          node fetch-food.js
+
+      # 4. 將 food.json 加入 artifact（可選）
+      - name: Upload food.json as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: food-json
+          path: food.json
